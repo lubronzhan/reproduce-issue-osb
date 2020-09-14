@@ -9,7 +9,22 @@ import (
 	"time"
 )
 
-func callODB() error {
+type Client struct {
+	httpClient *http.Client
+}
+
+func (c *Client) callODBHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello osb %s\n", r.URL.Path[1:])
+	res, err := c.httpClient.Get("https://localhost:8080/foo")
+	if err != nil {
+		log.Println("Error: ")
+		log.Println(err)
+		return
+	}
+	defer res.Body.Close()
+}
+
+func NewClient() *Client {
 	httpClient := &http.Client{
 		Timeout: time.Duration(60) * time.Second,
 	}
@@ -30,26 +45,16 @@ func callODB() error {
 	}
 	httpClient.Transport = transport
 
-	res, err := httpClient.Get("https://localhost:8080/foo")
-	if err != nil {
-		return err
+	return &Client{
+		httpClient: httpClient,
 	}
-	defer res.Body.Close()
-
-	log.Println(res)
-	return nil
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "hello osb %s\n", r.URL.Path[1:])
-	err := callODB()
-	log.Println("Error: ")
-	log.Println(err)
 }
 
 func main() {
 	log.Println("ok")
-	http.HandleFunc("/foo", handler)
+	client := NewClient()
+
+	http.HandleFunc("/foo", client.callODBHandler)
 
 	log.Fatal(http.ListenAndServe(":8082", nil))
 	log.Println("yes?")
